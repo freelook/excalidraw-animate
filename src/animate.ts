@@ -14,6 +14,7 @@ type AnimateOptions = {
 };
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const ANIMATION_DURATION_SCALE = 2;
 
 const findNode = (ele: SVGElement, name: string) => {
   const childNodes = ele.childNodes as NodeListOf<SVGElement>;
@@ -628,6 +629,9 @@ const extractNumberFromElement = (
   return (match && Number(match[1])) || 0;
 };
 
+const scaleDuration = (durationMs: number) =>
+  durationMs * ANIMATION_DURATION_SCALE;
+
 const sortSvgNodes = (
   nodes: SVGElement[],
   elements: readonly NonDeletedExcalidrawElement[],
@@ -666,16 +670,18 @@ export const animateSvg = (
       if (groupIds.length >= 1) {
         const groupId = groupIds[0];
         const group = groups[groupId];
-        const dur =
+        const dur = scaleDuration(
           extractNumberFromElement(element, 'animateDuration') ||
-          groupDur / (group.length + 1);
+            groupDur / (group.length + 1),
+        );
         patchSvgEle(svg, ele, element, current, dur, options);
         current += dur;
         finished.set(ele, true);
         group.forEach(([childEle, childIndex]) => {
-          const dur =
+          const dur = scaleDuration(
             extractNumberFromElement(elements[childIndex], 'animateDuration') ||
-            groupDur / (group.length + 1);
+              groupDur / (group.length + 1),
+          );
           if (!finished.has(childEle)) {
             patchSvgEle(
               svg,
@@ -691,8 +697,9 @@ export const animateSvg = (
         });
         delete groups[groupId];
       } else {
-        const dur =
-          extractNumberFromElement(element, 'animateDuration') || individualDur;
+        const dur = scaleDuration(
+          extractNumberFromElement(element, 'animateDuration') || individualDur,
+        );
         patchSvgEle(svg, ele, element, current, dur, options);
         current += dur;
         finished.set(ele, true);

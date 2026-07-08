@@ -58,6 +58,7 @@ const App = () => {
   return (
     <div>
       <div
+        className="app-mode-controls"
         style={{
           position: 'absolute',
           zIndex: 10,

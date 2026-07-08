@@ -122,8 +122,6 @@ const Toolbar = ({ svgList, loadDataList, theme }: Props) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // FIXME
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setWebmData(undefined);
   }, [svgList]);
 
@@ -141,8 +139,6 @@ const Toolbar = ({ svgList, loadDataList, theme }: Props) => {
     const hash = window.location.hash.slice(1);
     const searchParams = new URLSearchParams(hash);
     if (searchParams.get('toolbar') !== 'no') {
-      // FIXME
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowToolbar(true);
     } else {
       setShowToolbar('never');
@@ -297,14 +293,17 @@ const Toolbar = ({ svgList, loadDataList, theme }: Props) => {
     }
     setProcessing(true);
     setShowToolbar(false);
+    document.documentElement.classList.add('webm-exporting');
     try {
       const data = await prepareWebmData(svgList);
       setWebmData(data);
     } catch (e) {
       console.log(e);
+    } finally {
+      document.documentElement.classList.remove('webm-exporting');
+      setShowToolbar(true);
+      setProcessing(false);
     }
-    setShowToolbar(true);
-    setProcessing(false);
   };
 
   if (showToolbar !== true) {
@@ -313,7 +312,15 @@ const Toolbar = ({ svgList, loadDataList, theme }: Props) => {
 
   return (
     <>
-      <div style={{ marginTop: 5 }}>
+      <div
+        style={{
+          marginLeft: '3rem',
+          display: 'flex',
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: 4,
+        }}
+      >
         <div
           className={`toolbar ${showToolbar === true ? '' : 'toolbar--hidden'}`}
         >
@@ -325,7 +332,6 @@ const Toolbar = ({ svgList, loadDataList, theme }: Props) => {
           >
             Load File
           </button>
-          <span>OR</span>
           <button
             type="button"
             onClick={loadLibrary}
@@ -334,7 +340,6 @@ const Toolbar = ({ svgList, loadDataList, theme }: Props) => {
           >
             Load Library
           </button>
-          <span>OR</span>
           <form onSubmit={loadLink}>
             <input
               className="app-input"
@@ -407,11 +412,6 @@ const Toolbar = ({ svgList, loadDataList, theme }: Props) => {
               onClick={exportToWebm}
               disabled={processing}
               className="app-button"
-              title={
-                webmData
-                  ? 'Export animation as WebM video file'
-                  : 'Prepare animation for WebM export'
-              }
             >
               {processing
                 ? 'Processing...'
@@ -422,7 +422,7 @@ const Toolbar = ({ svgList, loadDataList, theme }: Props) => {
           </div>
         )}
         <GitHubCorner
-          link="https://github.com/dai-shi/excalidraw-animate"
+          link="https://github.com/freelook/excalidraw-animate"
           size={40}
         />
       </div>

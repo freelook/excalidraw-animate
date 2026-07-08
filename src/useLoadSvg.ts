@@ -15,6 +15,67 @@ import { animateSvg } from './animate';
 
 const THEME_FILTER = 'invert(93%) hue-rotate(180deg)';
 const IMAGE_CORRECTION = 'invert(100%) hue-rotate(180deg) saturate(1.25)';
+const EMOJI_CORRECTION = IMAGE_CORRECTION;
+const EMOJI_REGEX = /\p{Extended_Pictographic}/u;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+type SegmenterConstructor = new (
+  locales?: string | string[],
+  options?: { granularity?: 'grapheme' },
+) => {
+  segment: (text: string) => Iterable<{ segment: string }>;
+};
+
+const appendFilter = (ele: SVGElement, filter: string) => {
+  const current = ele.style.filter?.trim() || '';
+  if (!current.includes(filter)) {
+    ele.style.filter = current ? `${current} ${filter}` : filter;
+  }
+};
+
+const splitGraphemes = (text: string) => {
+  const Segmenter = (
+    Intl as typeof Intl & { Segmenter?: SegmenterConstructor }
+  ).Segmenter;
+
+  if (!Segmenter) {
+    return Array.from(text);
+  }
+
+  return Array.from(
+    new Segmenter(undefined, { granularity: 'grapheme' }).segment(text),
+    ({ segment }) => segment,
+  );
+};
+
+const correctEmojiTextNode = (node: Text) => {
+  const text = node.textContent || '';
+  if (!EMOJI_REGEX.test(text)) {
+    return;
+  }
+
+  const fragment = node.ownerDocument.createDocumentFragment();
+  splitGraphemes(text).forEach((segment) => {
+    if (!EMOJI_REGEX.test(segment)) {
+      fragment.appendChild(node.ownerDocument.createTextNode(segment));
+      return;
+    }
+
+    const tspan = node.ownerDocument.createElementNS(SVG_NS, 'tspan');
+    tspan.textContent = segment;
+    appendFilter(tspan, EMOJI_CORRECTION);
+    fragment.appendChild(tspan);
+  });
+  node.replaceWith(fragment);
+};
+
+const correctEmojiText = (ele: SVGTextElement | SVGTextPathElement) => {
+  Array.from(ele.childNodes).forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      correctEmojiTextNode(node as Text);
+    }
+  });
+};
 
 export const applyThemeToSvg = (
   svg: SVGSVGElement,
@@ -39,14 +100,13 @@ export const applyThemeToSvg = (
       return;
     }
 
-    // append correction filter
-    const current = img.style.filter?.trim() || '';
-    if (!current.includes(IMAGE_CORRECTION)) {
-      img.style.filter = current
-        ? `${current} ${IMAGE_CORRECTION}`
-        : IMAGE_CORRECTION;
-    }
+    appendFilter(img, IMAGE_CORRECTION);
   });
+
+  cloned
+    .querySelectorAll<SVGTextPathElement>('textPath')
+    .forEach(correctEmojiText);
+  cloned.querySelectorAll<SVGTextElement>('text').forEach(correctEmojiText);
 
   return cloned;
 };
@@ -109,8 +169,8 @@ export const useLoadSvg = (
             appState: data.appState,
             exportPadding: 30,
           });
+          const result = animateSvg(svg, elements, options);
           const themedSvg = applyThemeToSvg(svg, theme);
-          const result = animateSvg(themedSvg, elements, options);
           if (inSequence) {
             options.startMs = result.finishedMs;
           }
