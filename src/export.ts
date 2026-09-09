@@ -28,14 +28,35 @@ export const prepareWebmData = (
     navigator.mediaDevices
       .getDisplayMedia({
         video: {
-          // FIXME should we remove this?
-          // @ts-expect-error no such types
+          // @ts-expect-error browser-specific constraints
           cursor: 'never',
           displaySurface: 'browser',
+          frameRate: {
+            ideal: 30,
+            max: 30,
+          },
         },
+        audio: false,
       })
-      .then((stream) => {
-        const recorder = new MediaRecorder(stream);
+      .then(async (stream) => {
+        const track = stream.getVideoTracks()[0];
+
+        await track.applyConstraints({
+          frameRate: {
+            ideal: 30,
+            max: 30,
+          },
+        });
+
+        const mimeType = [
+          'video/webm;codecs=vp9',
+          'video/webm;codecs=vp8',
+          'video/webm',
+        ].find((type) => MediaRecorder.isTypeSupported(type));
+        const recorder = new MediaRecorder(stream, {
+          ...(mimeType ? { mimeType } : {}),
+          videoBitsPerSecond: 25_000_000,
+        });
         recorder.ondataavailable = (e) => {
           resolve(e.data);
         };
@@ -51,7 +72,7 @@ export const prepareWebmData = (
         });
         setTimeout(() => {
           recorder.stop();
-          stream.getVideoTracks()[0].stop();
+          track.stop();
         }, maxFinishedMs);
       })
       .catch(reject);
