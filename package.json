@@ -14,7 +14,7 @@
     "dev": "vite",
     "build": "vite build",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build",
+    "deploy": "gh-pages -d build --nojekyll",
     "start": "vite preview",
     "test": "pnpm run '/^test:.*/'",
     "test:type": "tsc",
